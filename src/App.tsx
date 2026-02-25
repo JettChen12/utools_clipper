@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './hooks/useStore';
-import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw } from 'lucide-react';
+import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
@@ -101,10 +101,13 @@ function App() {
     return (
       <div className="w-[350px] h-[500px] bg-gray-50 flex flex-col font-sans">
         <header className="px-4 py-3 bg-white border-b border-gray-200 flex items-center space-x-2">
-           <button onClick={() => setView('list')} className="text-gray-500 hover:text-gray-800">
-             ← Back
+           <button 
+             onClick={() => setView('list')} 
+             className="font-semibold text-gray-800 hover:text-gray-800 p-1 rounded-md hover:bg-gray-100 transition-colors"
+             title="Back"
+           >
+             <ChevronLeft size={20} />
            </button>
-           <h1 className="font-semibold text-gray-800">Settings</h1>
         </header>
         
         <div className="p-4 space-y-4">
@@ -114,7 +117,7 @@ function App() {
                  <Check size={24} />
                </div>
                <p className="font-medium text-gray-900">Logged in as {syncState.username}</p>
-               <p className="text-xs text-gray-500 mb-4">{syncState.serverUrl}</p>
+               <p className="text-xs text-gray-500 mb-4"></p>
                <button 
                  onClick={handleLogout}
                  className="w-full py-2 px-4 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-medium"

@@ -14,11 +14,15 @@ export default defineManifest(async (env) => ({
   action: {
     default_popup: 'index.html',
     default_icon: {
-      "128": "icon.svg"
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
     }
   },
   icons: {
-    "128": "icon.svg"
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
   },
   background: {
     service_worker: 'src/background/index.ts',
