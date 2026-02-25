@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './hooks/useStore';
+import { storage } from './lib/storage';
 import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
 
 function App() {
-  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, triggerSync, isSyncing } = useStore();
+  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, isSyncing } = useStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [view, setView] = useState<'list' | 'settings'>('list');
 
@@ -73,9 +74,51 @@ function App() {
       }
       
       const data = await res.json();
+      
+      // Parse userId from token
+      let userId = null;
+      try {
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        userId = payload.id;
+      } catch (e) {
+        console.warn('Failed to parse token payload', e);
+      }
+      
+      // Check for offline/guest tasks
+      // 1. Identify tasks that belong to ANOTHER user (userId != newUserId) - MUST CLEAR
+      // 2. Identify tasks that don't belong to any user (userId is null/undefined) - ASK MERGE
+      
+      const currentTasks = await storage.getTasks();
+      const offlineTasksCount = await storage.getOfflineTasksCount();
+      // Explicitly check for tasks that have a userId different from the one logging in
+      const hasForeignTasks = currentTasks.some((t: any) => t.userId && t.userId !== userId);
+      
+      if (hasForeignTasks) {
+        // SCENARIO: Tasks belong to another user (e.g. A didn't logout properly, or storage was manipulated)
+        // MUST clear to prevent data leak. We do NOT offer merge for these.
+        await clearUserData();
+      } else if (offlineTasksCount > 0) {
+        // SCENARIO: Anonymous tasks exist (Guest -> Login)
+        // Ask user to merge
+        const confirmMerge = window.confirm(
+          `You have ${offlineTasksCount} offline tasks. Do you want to merge them into your account?\n\nCancel will discard these tasks.`
+        );
+        
+        if (confirmMerge) {
+          // Assign these tasks to the new user
+          if (userId) {
+            await storage.assignTasksToUser(userId);
+          }
+        } else {
+          // User chose to discard - clear everything before setting new user
+          await clearUserData();
+        }
+      }
+
       await updateSettings({ 
         serverUrl: url, 
         token: data.token, 
+        userId,
         username 
       });
       setView('list');
@@ -83,7 +126,7 @@ function App() {
       // Trigger sync immediately after login and wait for it
       await handleSync();
       
-      // Force reload tasks from storage to ensure UI is up to date
+      // Force reload tasks to show updated state (merged or cleared)
       await loadTasks();
       
     } catch (err) {
@@ -94,7 +137,9 @@ function App() {
   };
   
   const handleLogout = async () => {
-     await updateSettings({ token: null, username: null });
+     await handleLogoutCleanup();
+     // Force UI update
+     await loadTasks();
   };
 
   if (view === 'settings') {

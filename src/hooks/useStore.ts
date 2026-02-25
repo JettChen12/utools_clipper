@@ -15,6 +15,8 @@ interface StoreState {
   toggleTask: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   updateSettings: (settings: Partial<SyncState>) => Promise<void>;
+  handleLogoutCleanup: () => Promise<void>;
+  clearUserData: () => Promise<void>;
   triggerSync: () => Promise<void>; // Manual sync
 }
 
@@ -78,6 +80,19 @@ export const useStore = create<StoreState>((set, get) => ({
     await storage.setSyncState(settings);
     const newState = await storage.getSyncState();
     set({ syncState: newState });
+  },
+
+  handleLogoutCleanup: async () => {
+    await storage.handleLogoutCleanup();
+    const newState = await storage.getSyncState();
+    // Keep tasks in state, just update sync info
+    set({ syncState: newState });
+  },
+
+  clearUserData: async () => {
+    await storage.clearUserData();
+    const newState = await storage.getSyncState();
+    set({ tasks: [], syncState: newState });
   },
 
   triggerSync: async () => {

@@ -2,6 +2,7 @@ import { ulid } from 'ulid';
 
 export interface Task {
   id: string;
+  userId?: string | null; // Optional: used for data ownership check
   title: string;
   description?: string;
   status: 'todo' | 'done' | 'archived';
@@ -51,6 +52,12 @@ export const storage = {
   async saveTask(task: Task): Promise<void> {
     const tasks = await this.getTasks();
     const index = tasks.findIndex((t) => t.id === task.id);
+    const syncState = await this.getSyncState();
+    
+    // Assign current user if available and task doesn't have one
+    if (!task.userId && syncState.userId) {
+      task.userId = syncState.userId;
+    }
     
     // Determine opType and changes
     let opType: OpLog['opType'] = 'create';
@@ -71,6 +78,10 @@ export const storage = {
         tags: task.tags,
         updatedAt: task.updatedAt
       };
+      // Preserve existing userId if not present in update
+      if (!task.userId && tasks[index].userId) {
+        task.userId = tasks[index].userId;
+      }
       tasks[index] = task;
     } else {
       tasks.unshift(task); // Add to top
@@ -168,6 +179,51 @@ export const storage = {
   async setSyncState(state: Partial<SyncState>): Promise<void> {
     const current = await this.getSyncState();
     await chrome.storage.local.set({ syncState: { ...current, ...state } });
+  },
+
+  async getOfflineTasksCount(): Promise<number> {
+    const tasks = await this.getTasks();
+    // Count tasks that don't have a userId (meaning they were created offline/guest)
+    return tasks.filter(t => !t.userId).length;
+  },
+
+  async assignTasksToUser(userId: string): Promise<void> {
+    const tasks = await this.getTasks();
+    let hasChanges = false;
+    
+    tasks.forEach(task => {
+      if (!task.userId) {
+        task.userId = userId;
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      await chrome.storage.local.set({ tasks });
+      // We don't need to update OpLogs because they will be pushed with the new user's token
+      // and the backend will assign the user ID to the new records.
+    }
+  },
+
+  async handleLogoutCleanup(): Promise<void> {
+    // Completely clear all user data upon logout
+    // This ensures no data leakage between users and strictly follows "Logout = Clear" policy
+    await this.clearUserData();
+  },
+
+  async clearUserData(): Promise<void> {
+    // Keep serverUrl, clear everything else
+    const syncState = await this.getSyncState();
+    const serverUrl = syncState.serverUrl;
+    
+    // Clear tasks, opLogs, and syncState
+    await chrome.storage.local.remove(['tasks', 'opLogs', 'syncState']);
+    
+    // Restore serverUrl and reset sync state
+    await this.setSyncState({ 
+      ...DEFAULT_SYNC_STATE,
+      serverUrl 
+    });
   },
   
   // Debug
