@@ -3,6 +3,7 @@ import { storage } from '../lib/storage';
 import type { Task, SyncState } from '../lib/storage';
 import { ulid } from 'ulid';
 import { sync } from '../lib/sync';
+import { translations, type Language } from '../lib/i18n';
 
 interface StoreState {
   tasks: Task[];
@@ -19,6 +20,8 @@ interface StoreState {
   clearUserData: () => Promise<void>;
   triggerSync: () => Promise<void>; // Manual sync
   pullOnly: () => Promise<void>; // Only pull data from server
+  setLanguage: (lang: Language) => Promise<void>;
+  t: (key: string, params?: Record<string, any>) => string;
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -26,6 +29,25 @@ export const useStore = create<StoreState>((set, get) => ({
   syncState: null,
   isLoading: true,
   isSyncing: false,
+
+  setLanguage: async (lang: Language) => {
+    await storage.setSyncState({ language: lang });
+    const newState = await storage.getSyncState();
+    set({ syncState: newState });
+  },
+
+  t: (key: string, params?: Record<string, any>) => {
+    const lang = get().syncState?.language || 'en';
+    const bundle = (translations as any)[lang] || (translations as any)['en'];
+    let text = bundle[key] || key;
+    
+    if (params) {
+      Object.keys(params).forEach(k => {
+        text = text.replace(`{{${k}}}`, params[k]);
+      });
+    }
+    return text;
+  },
 
   loadTasks: async () => {
     set({ isLoading: true });

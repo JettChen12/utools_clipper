@@ -1,4 +1,5 @@
 import { ulid } from 'ulid';
+import type { Language } from './i18n';
 
 export interface Task {
   id: string;
@@ -29,6 +30,7 @@ export interface SyncState {
   serverUrl: string;
   userId: string | null;
   username: string | null;
+  language: Language;
 }
 
 import { DEFAULT_SERVER_URL } from '../config';
@@ -40,6 +42,7 @@ const DEFAULT_SYNC_STATE: SyncState = {
   serverUrl: DEFAULT_SERVER_URL,
   userId: null,
   username: null,
+  language: 'en',
 };
 
 // Helper to wrap chrome.storage.local

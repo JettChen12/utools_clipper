@@ -5,9 +5,10 @@ import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, Chevron
 import { Toaster, toast } from 'sonner';
 import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
+import { LANGUAGES } from './lib/i18n';
 
 function App() {
-  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing } = useStore();
+  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing, t, setLanguage } = useStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [view, setView] = useState<'list' | 'settings'>('list');
 
@@ -17,6 +18,7 @@ function App() {
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   
   // Merge confirmation modal state
   const [showMergeModal, setShowMergeModal] = useState(false);
@@ -71,6 +73,35 @@ function App() {
        setShowMergeModal(true);
     }
   }, [view, offlineCount, pendingMergeUserId]);
+
+  const handleRegister = async () => {
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+      const res = await fetch(`${url}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      if (!res.ok) {
+        throw new Error('Registration failed. Username may be taken.');
+      }
+      
+      const data = await res.json();
+      toast.success('Registration successful! Logging in...');
+      
+      // Auto-login after successful registration
+      // Just call handleLogin directly since state (username/password) is already set
+      await handleLogin();
+      
+    } catch (err) {
+      setAuthError('Registration failed. Username may be taken.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     setAuthLoading(true);
@@ -197,28 +228,43 @@ function App() {
            >
              <ChevronLeft size={20} />
            </button>
+           <h2 className="font-semibold text-gray-800 text-sm">{t('settings.title')}</h2>
         </header>
         
         <div className="p-4 space-y-4">
+          {/* Language Selector */}
+          <div>
+             <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.language')}</label>
+             <select 
+               value={syncState?.language || 'en'}
+               onChange={(e) => setLanguage(e.target.value as any)}
+               className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+             >
+               {LANGUAGES.map(lang => (
+                 <option key={lang.code} value={lang.code}>{lang.label}</option>
+               ))}
+             </select>
+          </div>
+
           {syncState?.token ? (
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
                  <Check size={24} />
                </div>
-               <p className="font-medium text-gray-900">Logged in as {syncState.username}</p>
+               <p className="font-medium text-gray-900">{t('settings.logged_in_as', { username: syncState.username })}</p>
                <p className="text-xs text-gray-500 mb-4"></p>
                <button 
                  onClick={handleLogout}
                  className="w-full py-2 px-4 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-medium"
                >
-                 Logout
+                 {t('settings.logout')}
                </button>
             </div>
           ) : (
             <div className="space-y-3">
                {/* Hidden Server URL for "Built-in" experience */}
                <div>
-                 <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
+                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.username')}</label>
                  <input 
                    type="text" 
                    value={username}
@@ -227,7 +273,7 @@ function App() {
                  />
                </div>
                <div>
-                 <label className="block text-xs font-medium text-gray-700 mb-1">Password</label>
+                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.password')}</label>
                  <input 
                    type="password" 
                    value={password}
@@ -243,12 +289,24 @@ function App() {
                )}
 
                <button 
-                 onClick={handleLogin}
+                 onClick={isRegistering ? handleRegister : handleLogin}
                  disabled={authLoading}
                  className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center"
                >
-                 {authLoading ? <Loader2 size={16} className="animate-spin" /> : 'Login'}
+                 {authLoading ? <Loader2 size={16} className="animate-spin" /> : (isRegistering ? t('settings.register') : t('settings.login'))}
                </button>
+               
+               <div className="text-center mt-3">
+                 <button
+                   onClick={() => {
+                     setIsRegistering(!isRegistering);
+                     setAuthError('');
+                   }}
+                   className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
+                 >
+                   {isRegistering ? t('settings.switch_to_login') : t('settings.switch_to_register')}
+                 </button>
+               </div>
             </div>
           )}
         </div>
@@ -296,13 +354,13 @@ function App() {
           <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-indigo-200 shadow-md">
             QK
           </div>
-          <h1 className="font-bold text-gray-800 tracking-tight">QKnot</h1>
+          <h1 className="font-bold text-gray-800 tracking-tight">{t('app.name')}</h1>
         </div>
         <div className="flex items-center space-x-2 text-gray-500">
            <button 
              onClick={() => setView('settings')}
              className="hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
-             title="Settings"
+             title={t('settings.title')}
            >
              <Settings size={18} />
            </button>
@@ -317,7 +375,7 @@ function App() {
             value={newTaskTitle}
             onChange={e => setNewTaskTitle(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Add a task..." 
+            placeholder={t('task.add_placeholder')} 
             // Disable autofocus if modal is open to prevent keyboard interaction
             className="w-full pl-3 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
             autoFocus={!showMergeModal}
@@ -338,13 +396,13 @@ function App() {
       </div>
 
       {/* Task List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-gray-200">
+      <div className={clsx("flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-gray-200", showMergeModal && "pointer-events-none")}>
         {tasks.length === 0 ? (
            <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm opacity-60">
              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                 <Check size={32} className="text-gray-300" />
              </div>
-             <p>All clear for now</p>
+             <p>{t('task.empty_state')}</p>
            </div>
         ) : (
           tasks
@@ -356,9 +414,9 @@ function App() {
             .map(task => {
             const tags = task.title.match(/#\S+/g) || [];
             const displayTitle = task.title.replace(/#\S+/g, '').trim();
-            const linkMatch = displayTitle.match(/^\[链接\]\s*(.*)/);
+            const linkMatch = displayTitle.match(/^(\[链接\]|\[Link\]|\[連結\])\s*(.*)/i);
             const isLink = !!linkMatch;
-            const linkText = linkMatch ? linkMatch[1] : displayTitle;
+            const linkText = linkMatch ? linkMatch[2] : displayTitle;
             
             return (
             <div 
@@ -394,7 +452,7 @@ function App() {
                         className="hover:underline text-indigo-600 font-medium cursor-pointer"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        [链接]
+                        {t('link.text')}
                       </a>
                       {' ' + linkText}
                     </>
@@ -439,12 +497,12 @@ function App() {
                  ? "hover:bg-gray-100 text-indigo-500 cursor-pointer" 
                  : "text-gray-300 cursor-not-allowed"
              )}
-             title={isSyncing ? "Syncing..." : "Sync now"}
+             title={isSyncing ? t('status.syncing') : "Sync now"}
            >
              <RefreshCw size={14} className={clsx(isSyncing && "animate-spin")} />
            </button>
            
-           <span>{tasks.filter(t => t.status === 'todo').length} tasks pending</span>
+           <span>{t('status.tasks_pending', { count: tasks.filter(t => t.status === 'todo').length })}</span>
         </div>
 
         <span className="flex items-center space-x-1.5">
@@ -452,7 +510,7 @@ function App() {
              "w-2 h-2 rounded-full",
              syncState?.token ? "bg-green-500 shadow-green-200 shadow-sm" : "bg-gray-300"
           )}></span>
-          <span>{syncState?.token ? 'Sync Active' : 'Offline'}</span>
+          <span>{syncState?.token ? t('status.sync_active') : t('status.offline')}</span>
         </span>
       </div>
     </div>
