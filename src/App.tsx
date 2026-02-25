@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
 
 function App() {
-  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, isSyncing } = useStore();
+  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing } = useStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [view, setView] = useState<'list' | 'settings'>('list');
 
@@ -17,6 +17,11 @@ function App() {
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  
+  // Merge confirmation modal state
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [pendingMergeUserId, setPendingMergeUserId] = useState<string | null>(null);
+  const [offlineCount, setOfflineCount] = useState(0);
 
   useEffect(() => {
     // Initial load from local storage
@@ -56,6 +61,16 @@ function App() {
       error: 'Sync failed'
     });
   };
+
+  // Use an effect to handle the modal trigger safely after view change
+  useEffect(() => {
+    // Check if we need to show the modal
+    if (view === 'list' && offlineCount > 0 && pendingMergeUserId) {
+       // We are in list view, and we have pending merge
+       console.log('Triggering Modal Visibility');
+       setShowMergeModal(true);
+    }
+  }, [view, offlineCount, pendingMergeUserId]);
 
   const handleLogin = async () => {
     setAuthLoading(true);
@@ -99,20 +114,10 @@ function App() {
         await clearUserData();
       } else if (offlineTasksCount > 0) {
         // SCENARIO: Anonymous tasks exist (Guest -> Login)
-        // Ask user to merge
-        const confirmMerge = window.confirm(
-          `You have ${offlineTasksCount} offline tasks. Do you want to merge them into your account?\n\nCancel will discard these tasks.`
-        );
-        
-        if (confirmMerge) {
-          // Assign these tasks to the new user
-          if (userId) {
-            await storage.assignTasksToUser(userId);
-          }
-        } else {
-          // User chose to discard - clear everything before setting new user
-          await clearUserData();
-        }
+        // Defer merge prompt until we switch view
+        setOfflineCount(offlineTasksCount);
+        setPendingMergeUserId(userId);
+        // We'll show the modal after view change
       }
 
       await updateSettings({ 
@@ -121,7 +126,27 @@ function App() {
         userId,
         username 
       });
+      // Clear password for security
+      setPassword('');
       setView('list');
+      
+      // If we have offline tasks, show modal NOW, after view switch (in next render cycle effectively)
+      console.log('Merge Check:', { offlineTasksCount, hasForeignTasks });
+      if (offlineTasksCount > 0 && !hasForeignTasks) {
+        
+        // IMPORTANT: We must PULL user data first to show the user their existing cloud tasks
+        // BUT we must NOT PUSH our offline tasks yet!
+        // So we need a "Pull Only" sync here.
+        await pullOnly();
+        
+        // After pull, force reload tasks to show the PULLed tasks
+        // Note: loadTasks will now filter out offline tasks because userId is set!
+        // This is exactly what the user wants: show ONLY account tasks, hide offline tasks.
+        
+        // setShowMergeModal(true); // Don't trigger directly, let useEffect handle it
+        // Don't full sync yet, wait for user decision
+        return; 
+      }
       
       // Trigger sync immediately after login and wait for it
       await handleSync();
@@ -138,8 +163,27 @@ function App() {
   
   const handleLogout = async () => {
      await handleLogoutCleanup();
+     // Clear password for security
+     setPassword('');
      // Force UI update
      await loadTasks();
+  };
+
+  const handleMergeDecision = async (merge: boolean) => {
+    setShowMergeModal(false);
+    
+    if (merge && pendingMergeUserId) {
+        await storage.assignTasksToUser(pendingMergeUserId);
+        toast.success('Tasks merged successfully');
+      } else {
+        await storage.discardOfflineTasks();
+        toast.success('Offline tasks discarded');
+      }
+    
+    // After decision, proceed with sync
+    await handleSync();
+    await loadTasks();
+    setPendingMergeUserId(null);
   };
 
   if (view === 'settings') {
@@ -213,8 +257,39 @@ function App() {
   }
 
   return (
-    <div className="w-[350px] h-[500px] bg-gray-50 flex flex-col font-sans">
+    <div className={clsx("w-[350px] h-[500px] bg-gray-50 flex flex-col font-sans relative", showMergeModal && "overflow-hidden")}>
       <Toaster position="bottom-center" />
+      
+      {/* Global Merge Modal Overlay */}
+      {showMergeModal && (
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-[100] animate-in fade-in duration-200">
+           {/* Modal Content */}
+           <div className="bg-white rounded-xl shadow-2xl border border-gray-100 p-5 w-full max-w-[280px] animate-in zoom-in-95 duration-200">
+              <div className="mb-4">
+                <h3 className="font-bold text-gray-900 mb-1 text-sm">Sync Conflict</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  You have <span className="font-semibold text-gray-700">{offlineCount} offline tasks</span>. 
+                  Merge them with your account?
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handleMergeDecision(false)}
+                  className="flex-1 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Discard
+                </button>
+                <button 
+                  onClick={() => handleMergeDecision(true)}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Merge
+                </button>
+              </div>
+            </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center space-x-2">
@@ -243,8 +318,10 @@ function App() {
             onChange={e => setNewTaskTitle(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add a task..." 
+            // Disable autofocus if modal is open to prevent keyboard interaction
             className="w-full pl-3 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
-            autoFocus
+            autoFocus={!showMergeModal}
+            disabled={showMergeModal} // Disable input completely when modal is open
           />
           <button 
              onClick={() => {
@@ -270,7 +347,13 @@ function App() {
              <p>All clear for now</p>
            </div>
         ) : (
-          tasks.map(task => {
+          tasks
+            .slice()
+            .sort((a, b) => {
+              if (a.status === b.status) return 0;
+              return a.status === 'done' ? 1 : -1;
+            })
+            .map(task => {
             const tags = task.title.match(/#\S+/g) || [];
             const displayTitle = task.title.replace(/#\S+/g, '').trim();
             const linkMatch = displayTitle.match(/^\[链接\]\s*(.*)/);

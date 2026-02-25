@@ -135,16 +135,21 @@ export const storage = {
   },
 
   // Methods for Sync (Bypass OpLog)
-  async applySyncTask(id: string, changes: Partial<Task>) {
+  async applySyncTask(id: string, changes: Partial<Task>, userId?: string) {
     const tasks = await this.getTasks();
     const index = tasks.findIndex(t => t.id === id);
+    const syncState = await this.getSyncState();
+    const currentUserId = syncState.userId;
     
     if (index >= 0) {
+      // If task exists, update it.
       tasks[index] = { ...tasks[index], ...changes };
+      // Ensure userId is updated if provided from sync
+      if (userId && !tasks[index].userId) {
+         tasks[index].userId = userId;
+      }
     } else {
-      // If it's an update for a task we don't have, create it (if it has enough info)
-      // Or if it's a create op from server
-      // changes should contain all fields for create
+      // New task from server
       if (changes.title) {
          const newTask = {
             id,
@@ -154,11 +159,25 @@ export const storage = {
             tags: changes.tags || [],
             createdAt: changes.createdAt || Date.now(),
             updatedAt: changes.updatedAt || Date.now(),
-            ...changes
+            ...changes,
          } as Task;
-         tasks.unshift(newTask);
+         
+         // CRITICAL: Tasks coming from server MUST have userId.
+         // Priority 1: Use userId passed explicitly from sync (OpLog level)
+         // Priority 2: Use currentUserId from state (Fallback)
+         if (userId) {
+            newTask.userId = userId;
+         } else if (!newTask.userId && currentUserId) {
+            newTask.userId = currentUserId;
+         }
+         
+         tasks.push(newTask);
       }
     }
+    
+    // Sort tasks: Offline (no userId) usually newest? Or just sort by createdAt desc?
+    tasks.sort((a, b) => b.createdAt - a.createdAt);
+    
     await chrome.storage.local.set({ tasks });
   },
 
@@ -203,6 +222,20 @@ export const storage = {
       // We don't need to update OpLogs because they will be pushed with the new user's token
       // and the backend will assign the user ID to the new records.
     }
+  },
+
+  async discardOfflineTasks(): Promise<void> {
+    const tasks = await this.getTasks();
+    // Keep only tasks that have a userId (synced tasks)
+    const remainingTasks = tasks.filter(t => !!t.userId);
+    
+    // We should also clear opLogs that are related to these discarded tasks
+    // But since opLogs don't have userId directly, we assume all pending opLogs are for offline tasks?
+    // Not necessarily true if we have mixed state, but in our current flow:
+    // We just pulled user tasks. Any local opLogs must be from the offline session.
+    // So clearing opLogs is safe/correct here.
+    
+    await chrome.storage.local.set({ tasks: remainingTasks, opLogs: [] });
   },
 
   async handleLogoutCleanup(): Promise<void> {

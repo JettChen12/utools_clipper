@@ -82,15 +82,15 @@ export const sync = {
     }
   },
 
-  async applyChanges(changes: OpLog[]) {
+  async applyChanges(changes: any[]) {
     // Apply changes to local storage
     for (const change of changes) {
-      const { entity, entityId, opType, changes: changeData } = change;
+      // Extract userId from OpLog if available (backend sends it)
+      const { entity, entityId, opType, changes: changeData, userId } = change;
       if (entity === 'task') {
         if (opType === 'create' || opType === 'update') {
-           // We need a way to update task without triggering new OpLog (loop prevention)
-           // storage.saveTask(..., fromSync=true)
-           await storage.applySyncTask(entityId, changeData as Partial<Task>);
+           // Pass userId down to storage
+           await storage.applySyncTask(entityId, changeData as Partial<Task>, userId);
         } else if (opType === 'delete') {
            await storage.applySyncDelete(entityId);
         }

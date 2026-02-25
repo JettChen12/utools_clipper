@@ -18,6 +18,7 @@ interface StoreState {
   handleLogoutCleanup: () => Promise<void>;
   clearUserData: () => Promise<void>;
   triggerSync: () => Promise<void>; // Manual sync
+  pullOnly: () => Promise<void>; // Only pull data from server
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -30,8 +31,23 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ isLoading: true });
     const tasks = await storage.getTasks();
     const syncState = await storage.getSyncState();
+    
     // Filter out deleted tasks for UI
-    const visibleTasks = tasks.filter(t => !t.deleted);
+    let visibleTasks = tasks.filter(t => !t.deleted);
+    
+    // If we are logged in, and we are in the "pending merge" state (which we can infer if there are offline tasks AND logged in)
+    // Actually, store doesn't know about "pending merge". 
+    // But the user requested: "offline tasks should NOT appear in list" until merged.
+    // So if syncState.userId is present, we should ONLY show tasks that belong to this user.
+    // Unless... wait, if we merge, they become user's tasks.
+    // So filtering by userId seems correct!
+    
+    if (syncState?.userId) {
+       // Only show tasks that belong to the logged-in user
+       // Offline tasks (userId is null) will be hidden until merged
+       visibleTasks = visibleTasks.filter(t => t.userId === syncState.userId);
+    }
+    
     set({ tasks: visibleTasks, syncState, isLoading: false });
   },
 
@@ -101,6 +117,18 @@ export const useStore = create<StoreState>((set, get) => ({
       await sync.push();
       await sync.pull();
       // Reload tasks to reflect changes from server
+      const tasks = await storage.getTasks();
+      const visibleTasks = tasks.filter(t => !t.deleted);
+      set({ tasks: visibleTasks });
+    } finally {
+      set({ isSyncing: false });
+    }
+  },
+
+  pullOnly: async () => {
+    set({ isSyncing: true });
+    try {
+      await sync.pull();
       const tasks = await storage.getTasks();
       const visibleTasks = tasks.filter(t => !t.deleted);
       set({ tasks: visibleTasks });
