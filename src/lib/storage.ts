@@ -248,17 +248,19 @@ export const storage = {
   },
 
   async clearUserData(): Promise<void> {
-    // Keep serverUrl, clear everything else
+    // Keep serverUrl AND language, clear everything else
     const syncState = await this.getSyncState();
     const serverUrl = syncState.serverUrl;
+    const language = syncState.language;
     
     // Clear tasks, opLogs, and syncState
     await chrome.storage.local.remove(['tasks', 'opLogs', 'syncState']);
     
-    // Restore serverUrl and reset sync state
+    // Restore serverUrl, language and reset sync state
     await this.setSyncState({ 
       ...DEFAULT_SYNC_STATE,
-      serverUrl 
+      serverUrl,
+      language
     });
   },
   

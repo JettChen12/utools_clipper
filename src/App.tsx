@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './hooks/useStore';
 import { storage } from './lib/storage';
-import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft } from 'lucide-react';
+import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft, User, Globe, Info } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
 import { LANGUAGES } from './lib/i18n';
+import packageJson from '../package.json';
 
 function App() {
   const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing, t, setLanguage } = useStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [view, setView] = useState<'list' | 'settings'>('list');
+  const [settingsTab, setSettingsTab] = useState<'account' | 'language' | 'about'>('account');
 
   // Settings form state
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
@@ -220,7 +222,7 @@ function App() {
   if (view === 'settings') {
     return (
       <div className="w-[350px] h-[500px] bg-gray-50 flex flex-col font-sans">
-        <header className="px-4 py-3 bg-white border-b border-gray-200 flex items-center space-x-2">
+        <header className="px-4 py-3 bg-white border-b border-gray-200 flex items-center space-x-2 shrink-0">
            <button 
              onClick={() => setView('list')} 
              className="font-semibold text-gray-800 hover:text-gray-800 p-1 rounded-md hover:bg-gray-100 transition-colors"
@@ -231,84 +233,195 @@ function App() {
            <h2 className="font-semibold text-gray-800 text-sm">{t('settings.title')}</h2>
         </header>
         
-        <div className="p-4 space-y-4">
-          {/* Language Selector */}
-          <div>
-             <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.language')}</label>
-             <select 
-               value={syncState?.language || 'en'}
-               onChange={(e) => setLanguage(e.target.value as any)}
-               className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-             >
-               {LANGUAGES.map(lang => (
-                 <option key={lang.code} value={lang.code}>{lang.label}</option>
-               ))}
-             </select>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar */}
+          <div className="w-[100px] bg-gray-50 border-r border-gray-200 flex flex-col py-2 space-y-1">
+            <button 
+              onClick={() => setSettingsTab('account')}
+              className={clsx(
+                "w-full px-3 py-2 text-xs font-medium text-left flex items-center gap-2 transition-colors relative",
+                settingsTab === 'account' ? "text-indigo-600 bg-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <User size={14} />
+              {t('settings.menu.account')}
+              {settingsTab === 'account' && (
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-indigo-600"></div>
+              )}
+            </button>
+            <button 
+              onClick={() => setSettingsTab('language')}
+              className={clsx(
+                "w-full px-3 py-2 text-xs font-medium text-left flex items-center gap-2 transition-colors relative",
+                settingsTab === 'language' ? "text-indigo-600 bg-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <Globe size={14} />
+              {t('settings.menu.language')}
+              {settingsTab === 'language' && (
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-indigo-600"></div>
+              )}
+            </button>
+            <button 
+              onClick={() => setSettingsTab('about')}
+              className={clsx(
+                "w-full px-3 py-2 text-xs font-medium text-left flex items-center gap-2 transition-colors relative",
+                settingsTab === 'about' ? "text-indigo-600 bg-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <Info size={14} />
+              {t('settings.menu.about')}
+              {settingsTab === 'about' && (
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-indigo-600"></div>
+              )}
+            </button>
           </div>
 
-          {syncState?.token ? (
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
-               <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                 <Check size={24} />
-               </div>
-               <p className="font-medium text-gray-900">{t('settings.logged_in_as', { username: syncState.username })}</p>
-               <p className="text-xs text-gray-500 mb-4"></p>
-               <button 
-                 onClick={handleLogout}
-                 className="w-full py-2 px-4 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-medium"
-               >
-                 {t('settings.logout')}
-               </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-               {/* Hidden Server URL for "Built-in" experience */}
-               <div>
-                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.username')}</label>
-                 <input 
-                   type="text" 
-                   value={username}
-                   onChange={e => setUsername(e.target.value)}
-                   className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                 />
-               </div>
-               <div>
-                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.password')}</label>
-                 <input 
-                   type="password" 
-                   value={password}
-                   onChange={e => setPassword(e.target.value)}
-                   className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                 />
-               </div>
-               
-               {authError && (
-                 <div className="flex items-center text-red-500 text-xs gap-1">
-                   <AlertCircle size={12} /> {authError}
-                 </div>
-               )}
+          {/* Content Area */}
+          <div className="flex-1 bg-white p-4 overflow-y-auto">
+            
+            {/* Account Tab */}
+            {settingsTab === 'account' && (
+              syncState?.token ? (
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
+                   <div className="w-12 h-12 bg-white text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
+                     <User size={24} />
+                   </div>
+                   <p className="font-semibold text-gray-900 mb-1">{syncState.username}</p>
+                   <div className="flex items-center justify-center gap-1.5 mb-4">
+                     <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                     <p className="text-xs text-gray-500">Logged in</p>
+                   </div>
+                   <button 
+                     onClick={handleLogout}
+                     className="w-full py-2 px-4 bg-white border border-gray-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-100 transition-all text-xs font-medium shadow-sm"
+                   >
+                     {t('settings.logout')}
+                   </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                   {/* Login/Register Form */}
+                   <div>
+                     <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.username')}</label>
+                     <input 
+                       type="text" 
+                       value={username}
+                       onChange={e => setUsername(e.target.value)}
+                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.password')}</label>
+                     <input 
+                       type="password" 
+                       value={password}
+                       onChange={e => setPassword(e.target.value)}
+                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                     />
+                   </div>
+                   
+                   {authError && (
+                     <div className="flex items-center text-red-500 text-xs gap-1.5 bg-red-50 p-2 rounded-lg border border-red-100">
+                       <AlertCircle size={14} className="shrink-0" /> 
+                       <span>{authError}</span>
+                     </div>
+                   )}
+    
+                   <button 
+                     onClick={isRegistering ? handleRegister : handleLogin}
+                     disabled={authLoading}
+                     className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all text-sm font-medium flex items-center justify-center shadow-sm shadow-indigo-200 mt-2"
+                   >
+                     {authLoading ? <Loader2 size={16} className="animate-spin" /> : (isRegistering ? t('settings.register') : t('settings.login'))}
+                   </button>
+                   
+                   <div className="text-center mt-3 pt-2 border-t border-gray-50">
+                     <button
+                       onClick={() => {
+                         setIsRegistering(!isRegistering);
+                         setAuthError('');
+                       }}
+                       className="text-xs text-gray-500 hover:text-indigo-600 font-medium hover:underline transition-colors"
+                     >
+                       {isRegistering ? t('settings.switch_to_login') : t('settings.switch_to_register')}
+                     </button>
+                   </div>
+                </div>
+              )
+            )}
 
-               <button 
-                 onClick={isRegistering ? handleRegister : handleLogin}
-                 disabled={authLoading}
-                 className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center"
-               >
-                 {authLoading ? <Loader2 size={16} className="animate-spin" /> : (isRegistering ? t('settings.register') : t('settings.login'))}
-               </button>
-               
-               <div className="text-center mt-3">
-                 <button
-                   onClick={() => {
-                     setIsRegistering(!isRegistering);
-                     setAuthError('');
-                   }}
-                   className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
-                 >
-                   {isRegistering ? t('settings.switch_to_login') : t('settings.switch_to_register')}
-                 </button>
-               </div>
-            </div>
-          )}
+            {/* Language Tab */}
+            {settingsTab === 'language' && (
+              <div>
+                 <label className="block text-xs font-medium text-gray-700 mb-2">{t('settings.language')}</label>
+                 <div className="space-y-2">
+                   {LANGUAGES.map(lang => (
+                     <label 
+                       key={lang.code} 
+                       className={clsx(
+                         "flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all",
+                         (syncState?.language || 'en') === lang.code 
+                           ? "bg-indigo-50 border-indigo-200 shadow-sm" 
+                           : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                       )}
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={clsx(
+                           "w-4 h-4 rounded-full border flex items-center justify-center",
+                           (syncState?.language || 'en') === lang.code ? "border-indigo-600" : "border-gray-300"
+                         )}>
+                           {(syncState?.language || 'en') === lang.code && <div className="w-2 h-2 rounded-full bg-indigo-600"></div>}
+                         </div>
+                         <span className={clsx(
+                           "text-sm font-medium",
+                           (syncState?.language || 'en') === lang.code ? "text-indigo-900" : "text-gray-700"
+                         )}>{lang.label}</span>
+                       </div>
+                       <input 
+                         type="radio" 
+                         name="language" 
+                         value={lang.code}
+                         checked={(syncState?.language || 'en') === lang.code}
+                         onChange={(e) => setLanguage(e.target.value as any)}
+                         className="hidden"
+                       />
+                     </label>
+                   ))}
+                 </div>
+              </div>
+            )}
+
+            {/* About Tab */}
+            {settingsTab === 'about' && (
+              <div className="text-center space-y-4 pt-2">
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-indigo-200 shadow-lg mx-auto rotate-3">
+                  QK
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg">QKnot</h3>
+                  <p className="text-xs text-gray-500 mt-1">v{packageJson.version}</p>
+                </div>
+                
+                <p className="text-xs text-gray-600 leading-relaxed px-2">
+                  {t('about.description')}
+                </p>
+                
+                <div className="pt-4 border-t border-gray-50">
+                  <a 
+                    href="https://github.com/yourusername/qknot" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-indigo-600 transition-colors bg-gray-50 px-3 py-1.5 rounded-full hover:bg-indigo-50"
+                  >
+                    <Globe size={12} />
+                    GitHub
+                  </a>
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
     );
