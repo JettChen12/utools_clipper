@@ -29,5 +29,11 @@ export default defineManifest(async (env) => ({
     type: 'module',
   },
   permissions: ['storage', 'alarms', 'contextMenus'],
-  host_permissions: ['http://*/*', 'https://*/*']
+  host_permissions: ['http://*/*', 'https://*/*'],
+  content_scripts: [
+    {
+      matches: ['<all_urls>'],
+      js: ['src/content/index.ts'],
+    }
+  ]
 }))

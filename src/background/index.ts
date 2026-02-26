@@ -14,11 +14,55 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-// Listen for messages from Popup
-chrome.runtime.onMessage.addListener((message) => {
+// Helper to create task from text
+async function createTaskFromText(text: string) {
+  const newTask = {
+    id: ulid(),
+    title: text.length > 50 ? text.substring(0, 50) + '...' : text,
+    description: text.length > 50 ? text : undefined,
+    status: 'todo' as const,
+    priority: 'none' as const,
+    tags: ['quick-add'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  await storage.saveTask(newTask);
+  // Trigger sync
+  sync.push().then(() => sync.pull());
+}
+
+// Helper to create task from page
+async function createTaskFromPage(title: string, url: string) {
+  const newTask = {
+    id: ulid(),
+    title: `[链接] ${title}`,
+    description: url,
+    status: 'todo' as const,
+    priority: 'none' as const,
+    tags: ['website'],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  await storage.saveTask(newTask);
+  // Trigger sync
+  sync.push().then(() => sync.pull());
+}
+
+// Listen for messages from Content Script and Popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'sync_trigger') {
     console.log('Triggering manual sync...');
     sync.push().then(() => sync.pull());
+  } else if (message.type === 'ADD_TASK_FROM_CONTENT') {
+    const text = message.text;
+    if (text) {
+      createTaskFromText(text).then(() => {
+        sendResponse({ success: true });
+      });
+      return true; // Keep the message channel open for async response
+    }
   }
 });
 
@@ -43,44 +87,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'add-to-qknot' && info.selectionText) {
     const text = info.selectionText.trim();
     if (!text) return;
-
-    // Create task
-    const newTask = {
-      id: ulid(),
-      title: text.length > 50 ? text.substring(0, 50) + '...' : text,
-      description: text.length > 50 ? text : undefined,
-      status: 'todo' as const,
-      priority: 'none' as const,
-      tags: ['quick-add'],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    await storage.saveTask(newTask);
-    
-    // Trigger sync
-    sync.push().then(() => sync.pull());
+    await createTaskFromText(text);
   } else if (info.menuItemId === 'add-page-to-qknot') {
     const url = tab?.url || info.pageUrl;
-    const title = tab?.title || url;
     
     if (!url) return;
 
-    // Create task for page
-    const newTask = {
-      id: ulid(),
-      title: `[链接] ${title}`,
-      description: url,
-      status: 'todo' as const,
-      priority: 'none' as const,
-      tags: ['website'],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    await storage.saveTask(newTask);
-    
-    // Trigger sync
-    sync.push().then(() => sync.pull());
+    const title = tab?.title || url;
+    await createTaskFromPage(title, url);
   }
 });
