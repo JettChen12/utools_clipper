@@ -94,7 +94,7 @@ class FloatingButton {
     document.body.appendChild(this.container);
 
     // Bind event listeners
-    document.addEventListener('mouseup', () => this.handleSelection());
+    document.addEventListener('mouseup', (e) => this.handleSelection(e));
     document.addEventListener('keyup', () => this.handleSelection());
     document.addEventListener('scroll', () => this.hide(), { passive: true });
     window.addEventListener('resize', () => this.hide(), { passive: true });
@@ -117,7 +117,7 @@ class FloatingButton {
     `;
   }
 
-  private handleSelection() {
+  private handleSelection(e?: MouseEvent) {
     // Small delay to ensure selection is finalized
     setTimeout(() => {
       const selection = window.getSelection();
@@ -125,14 +125,14 @@ class FloatingButton {
 
       if (text && text.length > 0) {
         this.currentText = text;
-        this.show(selection!);
+        this.show(selection!, e);
       } else {
         this.hide();
       }
     }, 10);
   }
 
-  private show(selection: Selection) {
+  private show(selection: Selection, mouseEvent?: MouseEvent) {
     if (selection.rangeCount === 0) return;
     
     const range = selection.getRangeAt(0);
@@ -144,25 +144,37 @@ class FloatingButton {
       return;
     }
 
-    // Calculate position
-    // Position button above the selection, centered horizontally relative to the selection end
-    // Or to the right of the selection end?
-    // Let's position it near the end of the selection (mouse up position usually)
-    // But since we don't have mouse event here easily, we use the rect.
-    
-    // Let's put it slightly above the selection rectangle
     const scrollX = window.scrollX || window.pageXOffset;
     const scrollY = window.scrollY || window.pageYOffset;
 
-    // Position centered above the selection
-    // const x = rect.left + (rect.width / 2) - 16 + scrollX; // 16 is half button width approx
-    // const y = rect.top - 40 + scrollY;
+    let x, y;
 
-    // Let's try positioning it near the top-right corner of the selection, like Medium or Linear
-    const x = rect.right + scrollX - 10; 
-    const y = rect.top + scrollY - 45;
+    if (mouseEvent) {
+        // Position relative to the mouse cursor (drag end position)
+        // Add a small offset so it's not directly under the cursor
+        x = mouseEvent.pageX + 10;
+        y = mouseEvent.pageY - 35; // Position slightly above the cursor
+    } else {
+        // Fallback to top-right corner of selection (for keyboard selection)
+        x = rect.right + scrollX - 10; 
+        y = rect.top + scrollY - 45;
+    }
 
-    // Boundary checks could be added here to keep it on screen
+    // Boundary checks to keep it on screen
+    const buttonWidth = 40; // Approx width including shadow/padding
+    const buttonHeight = 40;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Check right edge
+    if (x + buttonWidth > scrollX + viewportWidth) {
+        x = scrollX + viewportWidth - buttonWidth - 10;
+    }
+    
+    // Check top edge
+    if (y < scrollY) {
+        y = scrollY + 10; // Push down if too high
+    }
 
     this.button.style.left = `${x}px`;
     this.button.style.top = `${y}px`;
