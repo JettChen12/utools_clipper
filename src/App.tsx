@@ -409,7 +409,7 @@ function App() {
                 
                 <div className="pt-4 border-t border-gray-50">
                   <a 
-                    href="https://github.com/yourusername/qknot" 
+                    href="https://github.com/JettChen12" 
                     target="_blank" 
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-indigo-600 transition-colors bg-gray-50 px-3 py-1.5 rounded-full hover:bg-indigo-50"
