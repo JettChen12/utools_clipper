@@ -18,8 +18,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 async function createTaskFromText(text: string) {
   const newTask = {
     id: ulid(),
-    title: text.length > 50 ? text.substring(0, 50) + '...' : text,
-    description: text.length > 50 ? text : undefined,
+    title: text, // Store full text in title, no truncation
+    // description: undefined, // Description only for metadata like URL
     status: 'todo' as const,
     priority: 'none' as const,
     tags: ['quick-add'],
@@ -36,8 +36,8 @@ async function createTaskFromText(text: string) {
 async function createTaskFromPage(title: string, url: string) {
   const newTask = {
     id: ulid(),
-    title: `[链接] ${title}`,
-    description: url,
+    title: title, // Store clean title without prefix
+    description: url, // Store URL in description
     status: 'todo' as const,
     priority: 'none' as const,
     tags: ['website'],

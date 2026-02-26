@@ -31,13 +31,13 @@ class FloatingButton {
         border-radius: 6px;
         padding: 0;
         cursor: pointer;
-        /* box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); */
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         pointer-events: auto; /* Enable clicks on button */
         opacity: 0;
+        /* Start from slightly below to animate up, but keep end state stable */
         transform: translateY(10px) scale(0.95);
         visibility: hidden;
       }
@@ -47,12 +47,12 @@ class FloatingButton {
         visibility: visible;
       }
       .qknot-btn:hover {
-        /* background-color: #f8fafc; */
-        transform: translateY(0) scale(1.1);
-        /* box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); */
+        /* Scale only, no translation */
+        transform: scale(1.1);
       }
       .qknot-btn:active {
-        transform: translateY(0) scale(0.95);
+        /* Scale down slightly on click */
+        transform: scale(0.95);
       }
       .qknot-icon {
         width: 26px;
@@ -206,23 +206,31 @@ class FloatingButton {
     if (!this.currentText) return;
 
     // Send message to background
-    chrome.runtime.sendMessage({
-      type: 'ADD_TASK_FROM_CONTENT',
-      text: this.currentText
-    }, (response) => {
-      if (response && response.success) {
-        // Show success animation
-        this.button.classList.add('success');
-        this.button.innerHTML = this.getSuccessIconSvg();
-        
-        // Hide after a short delay
-        setTimeout(() => {
-          this.hide();
-          // Clear selection to give feedback
-          window.getSelection()?.removeAllRanges();
-        }, 1000);
-      }
-    });
+    try {
+        chrome.runtime.sendMessage({
+          type: 'ADD_TASK_FROM_CONTENT',
+          text: this.currentText
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+              console.error('QKnot: Runtime error:', chrome.runtime.lastError);
+              return;
+          }
+          if (response && response.success) {
+            // Show success animation
+            this.button.classList.add('success');
+            this.button.innerHTML = this.getSuccessIconSvg();
+            
+            // Hide after a short delay
+            setTimeout(() => {
+              this.hide();
+              // Clear selection to give feedback
+              window.getSelection()?.removeAllRanges();
+            }, 1000);
+          }
+        });
+    } catch (err) {
+        console.error('QKnot: Failed to send message:', err);
+    }
   }
 }
 

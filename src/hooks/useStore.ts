@@ -12,7 +12,8 @@ interface StoreState {
   isSyncing: boolean; // Add sync loading state
   
   loadTasks: () => Promise<void>;
-  addTask: (title: string) => Promise<void>;
+  addTask: (title: string, description?: string) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   updateSettings: (settings: Partial<SyncState>) => Promise<void>;
@@ -73,10 +74,11 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ tasks: visibleTasks, syncState, isLoading: false });
   },
 
-  addTask: async (title: string) => {
+  addTask: async (title: string, description?: string) => {
     const newTask: Task = {
       id: ulid(),
       title,
+      description,
       status: 'todo',
       priority: 'none',
       tags: [],
@@ -88,6 +90,24 @@ export const useStore = create<StoreState>((set, get) => ({
     set(state => ({ tasks: [newTask, ...state.tasks] }));
     
     await storage.saveTask(newTask);
+  },
+
+  updateTask: async (id: string, updates: Partial<Task>) => {
+    const { tasks } = get();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const updatedTask = {
+      ...task,
+      ...updates,
+      updatedAt: Date.now()
+    };
+
+    set(state => ({
+      tasks: state.tasks.map(t => t.id === id ? updatedTask : t)
+    }));
+
+    await storage.saveTask(updatedTask);
   },
 
   toggleTask: async (id: string) => {

@@ -9,9 +9,10 @@ import { LANGUAGES } from './lib/i18n';
 import packageJson from '../package.json';
 
 function App() {
-  const { tasks, loadTasks, addTask, toggleTask, deleteTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing, t, setLanguage } = useStore();
+  const { tasks, loadTasks, addTask, toggleTask, deleteTask, updateTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing, t, setLanguage } = useStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [view, setView] = useState<'list' | 'settings'>('list');
+  const [view, setView] = useState<'list' | 'settings' | 'detail'>('list');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<'account' | 'language' | 'about'>('account');
 
   // Settings form state
@@ -427,6 +428,72 @@ function App() {
     );
   }
 
+  if (view === 'detail' && selectedTaskId) {
+    const task = tasks.find(t => t.id === selectedTaskId);
+    if (!task) {
+      setView('list');
+      return null;
+    }
+
+    const tags = task.title.match(/#\S+/g) || [];
+
+    return (
+      <div className="w-[350px] h-[500px] bg-white flex flex-col font-sans">
+        <header className="px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between shrink-0">
+           <div className="flex items-center space-x-2">
+             <button 
+               onClick={() => setView('list')} 
+               className="font-semibold text-gray-800 hover:text-gray-800 p-1 rounded-md hover:bg-gray-100 transition-colors"
+               title="Back"
+             >
+               <ChevronLeft size={20} />
+             </button>
+             <h2 className="font-semibold text-gray-800 text-sm">Edit Task</h2>
+           </div>
+           <button 
+             onClick={() => {
+                deleteTask(task.id);
+                setView('list');
+             }}
+             className="text-gray-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+           >
+             <Trash2 size={16} />
+           </button>
+        </header>
+
+        <div className="flex-1 p-4 overflow-y-auto">
+          <div className="space-y-4 h-full flex flex-col">
+            <div className="flex-1">
+              <textarea
+                value={task.title}
+                onChange={(e) => updateTask(task.id, { title: e.target.value })}
+                className="w-full h-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none"
+                placeholder="Task title..."
+                autoFocus
+              />
+            </div>
+
+            {/* Tags Display */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                {tags.map((tag, i) => (
+                  <span key={i} className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md font-medium">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            <div className="pt-2 text-xs text-gray-400 flex flex-col space-y-1">
+              <span>Created: {new Date(task.createdAt).toLocaleString()}</span>
+              <span>Updated: {new Date(task.updatedAt).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={clsx("w-[350px] h-[500px] bg-gray-50 flex flex-col font-sans relative", showMergeModal && "overflow-hidden")}>
       <Toaster position="bottom-center" />
@@ -527,20 +594,26 @@ function App() {
             .map(task => {
             const tags = task.title.match(/#\S+/g) || [];
             const displayTitle = task.title.replace(/#\S+/g, '').trim();
-            const linkMatch = displayTitle.match(/^(\[链接\]|\[Link\]|\[連結\])\s*(.*)/i);
-            const isLink = !!linkMatch;
-            const linkText = linkMatch ? linkMatch[2] : displayTitle;
+            // Check if task has a URL description (basic check)
+            const isLink = task.description && (task.description.startsWith('http') || task.description.startsWith('www.'));
             
             return (
             <div 
               key={task.id} 
               className={clsx(
-                "group flex items-start p-3 bg-white rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md hover:border-gray-200",
+                "group flex items-start p-3 bg-white rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md hover:border-gray-200 cursor-pointer",
                 task.status === 'done' && "opacity-60 bg-gray-50"
               )}
+              onClick={() => {
+                setSelectedTaskId(task.id);
+                setView('detail');
+              }}
             >
               <button 
-                onClick={() => toggleTask(task.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTask(task.id);
+                }}
                 className={clsx(
                   "mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition-all flex-shrink-0",
                   task.status === 'done' 
@@ -553,7 +626,7 @@ function App() {
               
               <div className="ml-3 flex-1 min-w-0">
                 <p className={clsx(
-                  "text-sm text-gray-800 break-words leading-snug transition-all",
+                  "text-sm text-gray-800 break-words leading-snug transition-all line-clamp-3",
                   task.status === 'done' && "line-through text-gray-400"
                 )}>
                   {isLink ? (
@@ -567,7 +640,7 @@ function App() {
                       >
                         {t('link.text')}
                       </a>
-                      {' ' + linkText}
+                      {' ' + displayTitle}
                     </>
                   ) : (
                     displayTitle
@@ -586,8 +659,11 @@ function App() {
               </div>
 
               <button 
-                onClick={() => deleteTask(task.id)}
-                className="ml-2 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteTask(task.id);
+                }}
+                className="ml-1 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
               >
                 <Trash2 size={14} />
               </button>
