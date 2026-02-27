@@ -13,7 +13,8 @@ function App() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [editTitle, setEditTitle] = useState(''); // Local state for editing task
   const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagText, setNewTagText] = useState('');
+  const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
+  const [tagInputText, setTagInputText] = useState('');
   const [view, setView] = useState<'list' | 'settings' | 'detail'>('list');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<'account' | 'language' | 'about'>('account');
@@ -440,16 +441,36 @@ function App() {
 
     const tags = task.tags || [];
 
-    const handleAddTag = () => {
-      const tag = newTagText.trim();
+    const handleSaveTag = () => {
+      const tag = tagInputText.trim();
+      
       if (tag) {
-        // Prevent duplicate tags
-        if (!tags.includes(tag)) {
-          updateTask(task.id, { tags: [...tags, tag] });
+        const newTags = [...tags];
+        
+        if (editingTagIndex !== null) {
+          // Editing existing tag
+          // Check for duplicates (excluding self)
+          const isDuplicate = newTags.some((t, i) => i !== editingTagIndex && t === tag);
+          if (!isDuplicate) {
+            newTags[editingTagIndex] = tag;
+            updateTask(task.id, { tags: newTags });
+          }
+        } else {
+          // Adding new tag
+          if (!newTags.includes(tag)) {
+            updateTask(task.id, { tags: [...newTags, tag] });
+          }
         }
-        setNewTagText('');
+      } else if (editingTagIndex !== null) {
+        // If empty string when editing, remove the tag
+        const newTags = tags.filter((_, i) => i !== editingTagIndex);
+        updateTask(task.id, { tags: newTags });
       }
+
+      // Reset state
+      setTagInputText('');
       setIsAddingTag(false);
+      setEditingTagIndex(null);
     };
 
     const handleRemoveTag = (tagToRemove: string) => {
@@ -504,16 +525,48 @@ function App() {
             <div className="pt-2 border-t border-gray-100">
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag, i) => (
-                  <div key={i} className="group relative inline-flex items-center justify-center bg-indigo-50 text-indigo-700 rounded-full px-3 py-1 text-xs font-medium border border-indigo-100 hover:border-indigo-200 transition-all cursor-default select-none">
-                    <span>#{tag}</span>
-                    <button 
-                      onClick={() => handleRemoveTag(tag)}
-                      className="absolute -top-1.5 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
-                      title={t('task.remove_tag')}
+                  editingTagIndex === i ? (
+                    <div key={i} className="flex items-center">
+                      <span className="text-gray-400 text-xs mr-1">#</span>
+                      <input
+                        type="text"
+                        value={tagInputText}
+                        onChange={(e) => setTagInputText(e.target.value)}
+                        onBlur={handleSaveTag}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveTag();
+                          if (e.key === 'Escape') {
+                            setEditingTagIndex(null);
+                            setTagInputText('');
+                          }
+                        }}
+                        maxLength={12}
+                        className="w-24 px-2 py-1 bg-white border border-indigo-300 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      key={i} 
+                      onClick={() => {
+                        setEditingTagIndex(i);
+                        setTagInputText(tag);
+                      }}
+                      className="group relative inline-flex items-center justify-center bg-indigo-50 text-indigo-700 rounded-full px-3 py-1 text-xs font-medium border border-indigo-100 hover:border-indigo-200 transition-all cursor-pointer select-none hover:bg-indigo-100"
                     >
-                      <X size={8} strokeWidth={3} />
-                    </button>
-                  </div>
+                      <span>#{tag}</span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering edit mode
+                          handleRemoveTag(tag);
+                        }}
+                        className="absolute -top-1.5 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
+                        title={t('task.remove_tag')}
+                      >
+                        <X size={8} strokeWidth={3} />
+                      </button>
+                    </div>
+                  )
                 ))}
                 
                 {isAddingTag ? (
@@ -521,16 +574,17 @@ function App() {
                     <span className="text-gray-400 text-xs mr-1">#</span>
                     <input
                       type="text"
-                      value={newTagText}
-                      onChange={(e) => setNewTagText(e.target.value)}
-                      onBlur={handleAddTag}
+                      value={tagInputText}
+                      onChange={(e) => setTagInputText(e.target.value)}
+                      onBlur={handleSaveTag}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddTag();
+                        if (e.key === 'Enter') handleSaveTag();
                         if (e.key === 'Escape') {
                           setIsAddingTag(false);
-                          setNewTagText('');
+                          setTagInputText('');
                         }
                       }}
+                      maxLength={12}
                       className="w-24 px-2 py-1 bg-white border border-indigo-300 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       placeholder={t('task.tag_placeholder')}
                       autoFocus
@@ -538,7 +592,11 @@ function App() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => setIsAddingTag(true)}
+                    onClick={() => {
+                      setIsAddingTag(true);
+                      setTagInputText('');
+                      setEditingTagIndex(null);
+                    }}
                     className="flex items-center text-xs text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 px-2.5 py-1 rounded-full border border-gray-200 hover:border-indigo-200 transition-all border-dashed h-[26px]"
                   >
                     <Plus size={12} className="mr-1" />
@@ -673,7 +731,8 @@ function App() {
                 // Initialize edit title without tags
                 setEditTitle(task.title);
                 setIsAddingTag(false);
-                setNewTagText('');
+                setEditingTagIndex(null);
+                setTagInputText('');
                 setView('detail');
               }}
             >
