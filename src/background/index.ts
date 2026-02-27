@@ -16,13 +16,20 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 // Helper to create task from text
 async function createTaskFromText(text: string) {
+  // Extract tags if present in the selected text
+  const tagsMatch = text.match(/#\S+/g);
+  const extractedTags = tagsMatch ? tagsMatch.map(t => t.slice(1)) : [];
+  
+  // Clean text
+  const cleanText = text.replace(/#\S+/g, '').trim();
+
   const newTask = {
     id: ulid(),
-    title: text, // Store full text in title, no truncation
+    title: cleanText, 
     // description: undefined, // Description only for metadata like URL
     status: 'todo' as const,
     priority: 'none' as const,
-    tags: ['quick-add'],
+    tags: [...new Set(['quick-add', ...extractedTags])], // Merge quick-add with extracted tags
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -34,13 +41,20 @@ async function createTaskFromText(text: string) {
 
 // Helper to create task from page
 async function createTaskFromPage(title: string, url: string) {
+  // Extract tags if present in the page title
+  const tagsMatch = title.match(/#\S+/g);
+  const extractedTags = tagsMatch ? tagsMatch.map(t => t.slice(1)) : [];
+  
+  // Clean title
+  const cleanTitle = title.replace(/#\S+/g, '').trim();
+
   const newTask = {
     id: ulid(),
-    title: title, // Store clean title without prefix
+    title: cleanTitle, 
     description: url, // Store URL in description
     status: 'todo' as const,
     priority: 'none' as const,
-    tags: ['website'],
+    tags: [...new Set(['website', ...extractedTags])], // Merge website with extracted tags
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

@@ -75,13 +75,20 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   addTask: async (title: string, description?: string) => {
+    // Extract tags from title
+    const tagsMatch = title.match(/#\S+/g);
+    const extractedTags = tagsMatch ? tagsMatch.map(t => t.slice(1)) : [];
+    
+    // Clean title by removing tags
+    const cleanTitle = title.replace(/#\S+/g, '').trim();
+
     const newTask: Task = {
       id: ulid(),
-      title,
+      title: cleanTitle,
       description,
       status: 'todo',
       priority: 'none',
-      tags: [],
+      tags: extractedTags,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -96,6 +103,10 @@ export const useStore = create<StoreState>((set, get) => ({
     const { tasks } = get();
     const task = tasks.find(t => t.id === id);
     if (!task) return;
+
+    // Remove automatic tag extraction from title update
+    // Updates are now explicit: if title is updated, only title changes.
+    // If tags are updated, they must be passed in updates.tags.
 
     const updatedTask = {
       ...task,

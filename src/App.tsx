@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './hooks/useStore';
 import { storage } from './lib/storage';
-import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft, User, Globe, Info } from 'lucide-react';
+import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft, User, Globe, Info, X } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
@@ -11,6 +11,9 @@ import packageJson from '../package.json';
 function App() {
   const { tasks, loadTasks, addTask, toggleTask, deleteTask, updateTask, syncState, updateSettings, clearUserData, handleLogoutCleanup, triggerSync, pullOnly, isSyncing, t, setLanguage } = useStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [editTitle, setEditTitle] = useState(''); // Local state for editing task
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagText, setNewTagText] = useState('');
   const [view, setView] = useState<'list' | 'settings' | 'detail'>('list');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<'account' | 'language' | 'about'>('account');
@@ -435,14 +438,33 @@ function App() {
       return null;
     }
 
-    const tags = task.title.match(/#\S+/g) || [];
+    const tags = task.tags || [];
+
+    const handleAddTag = () => {
+      const tag = newTagText.trim();
+      if (tag) {
+        // Prevent duplicate tags
+        if (!tags.includes(tag)) {
+          updateTask(task.id, { tags: [...tags, tag] });
+        }
+        setNewTagText('');
+      }
+      setIsAddingTag(false);
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+      updateTask(task.id, { tags: tags.filter(t => t !== tagToRemove) });
+    };
 
     return (
       <div className="w-[350px] h-[500px] bg-white flex flex-col font-sans">
         <header className="px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between shrink-0">
            <div className="flex items-center space-x-2">
              <button 
-               onClick={() => setView('list')} 
+               onClick={() => {
+                 updateTask(task.id, { title: editTitle });
+                 setView('list');
+               }} 
                className="font-semibold text-gray-800 hover:text-gray-800 p-1 rounded-md hover:bg-gray-100 transition-colors"
                title="Back"
              >
@@ -465,25 +487,63 @@ function App() {
           <div className="space-y-4 h-full flex flex-col">
             <div className="flex-1">
               <textarea
-                value={task.title}
-                onChange={(e) => updateTask(task.id, { title: e.target.value })}
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={() => updateTask(task.id, { title: editTitle })}
                 className="w-full h-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none"
                 placeholder="Task title..."
                 autoFocus
               />
             </div>
-
-            {/* Tags Display */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                {tags.map((tag, i) => (
-                  <span key={i} className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md font-medium">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
             
+            {/* Tags Management */}
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag, i) => (
+                  <div key={i} className="group relative inline-flex items-center justify-center bg-indigo-50 text-indigo-700 rounded-full px-3 py-1 text-xs font-medium border border-indigo-100 hover:border-indigo-200 transition-all cursor-default select-none">
+                    <span>#{tag}</span>
+                    <button 
+                      onClick={() => handleRemoveTag(tag)}
+                      className="absolute -top-1.5 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
+                      title="Remove tag"
+                    >
+                      <X size={8} strokeWidth={3} />
+                    </button>
+                  </div>
+                ))}
+                
+                {isAddingTag ? (
+                  <div className="flex items-center">
+                    <span className="text-gray-400 text-xs mr-1">#</span>
+                    <input
+                      type="text"
+                      value={newTagText}
+                      onChange={(e) => setNewTagText(e.target.value)}
+                      onBlur={handleAddTag}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddTag();
+                        if (e.key === 'Escape') {
+                          setIsAddingTag(false);
+                          setNewTagText('');
+                        }
+                      }}
+                      className="w-24 px-2 py-1 bg-white border border-indigo-300 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      placeholder="tag..."
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAddingTag(true)}
+                    className="flex items-center text-xs text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 px-2.5 py-1 rounded-full border border-gray-200 hover:border-indigo-200 transition-all border-dashed h-[26px]"
+                  >
+                    <Plus size={12} className="mr-1" />
+                    Add Tag
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="pt-2 text-xs text-gray-400 flex flex-col space-y-1">
               <span>Created: {new Date(task.createdAt).toLocaleString()}</span>
               <span>Updated: {new Date(task.updatedAt).toLocaleString()}</span>
@@ -592,8 +652,8 @@ function App() {
               return a.status === 'done' ? 1 : -1;
             })
             .map(task => {
-            const tags = task.title.match(/#\S+/g) || [];
-            const displayTitle = task.title.replace(/#\S+/g, '').trim();
+            const tags = task.tags || [];
+            const displayTitle = task.title;
             // Check if task has a URL description (basic check)
             const isLink = task.description && (task.description.startsWith('http') || task.description.startsWith('www.'));
             
@@ -606,6 +666,10 @@ function App() {
               )}
               onClick={() => {
                 setSelectedTaskId(task.id);
+                // Initialize edit title without tags
+                setEditTitle(task.title);
+                setIsAddingTag(false);
+                setNewTagText('');
                 setView('detail');
               }}
             >
@@ -651,7 +715,7 @@ function App() {
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {tags.map((tag, i) => (
                       <span key={i} className="text-[10px] text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md font-medium">
-                        {tag}
+                        #{tag.length > 12 ? tag.slice(0, 12) + '...' : tag}
                       </span>
                     ))}
                   </div>
