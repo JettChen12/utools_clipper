@@ -38,7 +38,13 @@ export const translations = {
     'about.github': 'GitHub',
     'task.add_placeholder': 'Add a task...',
     'task.empty_state': 'All clear for now',
-    'link.text': '[Link]'
+    'link.text': '[Link]',
+    'task.edit_title': 'Edit Task',
+    'task.created': 'Created: {{date}}',
+    'task.updated': 'Updated: {{date}}',
+    'task.add_tag': 'Add Tag',
+    'task.tag_placeholder': 'tag...',
+    'task.remove_tag': 'Remove tag'
   },
   'zh-CN': {
     'app.name': 'QKnot',
@@ -77,7 +83,13 @@ export const translations = {
     'about.github': 'GitHub',
     'task.add_placeholder': '添加任务...',
     'task.empty_state': '暂时没有任务',
-    'link.text': '[链接]'
+    'link.text': '[链接]',
+    'task.edit_title': '编辑任务',
+    'task.created': '创建时间：{{date}}',
+    'task.updated': '更新时间：{{date}}',
+    'task.add_tag': '添加标签',
+    'task.tag_placeholder': '标签...',
+    'task.remove_tag': '移除标签'
   },
   'zh-TW': {
     'app.name': 'QKnot',
@@ -116,7 +128,13 @@ export const translations = {
     'about.github': 'GitHub',
     'task.add_placeholder': '新增任務...',
     'task.empty_state': '暫時沒有任務',
-    'link.text': '[連結]'
+    'link.text': '[連結]',
+    'task.edit_title': '編輯任務',
+    'task.created': '創建時間：{{date}}',
+    'task.updated': '更新時間：{{date}}',
+    'task.add_tag': '新增標籤',
+    'task.tag_placeholder': '標籤...',
+    'task.remove_tag': '移除標籤'
   }
 };
 

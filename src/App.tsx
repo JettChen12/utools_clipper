@@ -470,7 +470,7 @@ function App() {
              >
                <ChevronLeft size={20} />
              </button>
-             <h2 className="font-semibold text-gray-800 text-sm">Edit Task</h2>
+             <h2 className="font-semibold text-gray-800 text-sm">{t('task.edit_title')}</h2>
            </div>
            <button 
              onClick={() => {
@@ -491,7 +491,7 @@ function App() {
                 onChange={(e) => setEditTitle(e.target.value)}
                 onBlur={() => updateTask(task.id, { title: editTitle })}
                 className="w-full h-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none"
-                placeholder="Task title..."
+                placeholder={t('task.add_placeholder')}
                 autoFocus
               />
             </div>
@@ -505,7 +505,7 @@ function App() {
                     <button 
                       onClick={() => handleRemoveTag(tag)}
                       className="absolute -top-1.5 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
-                      title="Remove tag"
+                      title={t('task.remove_tag')}
                     >
                       <X size={8} strokeWidth={3} />
                     </button>
@@ -528,7 +528,7 @@ function App() {
                         }
                       }}
                       className="w-24 px-2 py-1 bg-white border border-indigo-300 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      placeholder="tag..."
+                      placeholder={t('task.tag_placeholder')}
                       autoFocus
                     />
                   </div>
@@ -538,15 +538,15 @@ function App() {
                     className="flex items-center text-xs text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 px-2.5 py-1 rounded-full border border-gray-200 hover:border-indigo-200 transition-all border-dashed h-[26px]"
                   >
                     <Plus size={12} className="mr-1" />
-                    Add Tag
+                    {t('task.add_tag')}
                   </button>
                 )}
               </div>
             </div>
 
             <div className="pt-2 text-xs text-gray-400 flex flex-col space-y-1">
-              <span>Created: {new Date(task.createdAt).toLocaleString()}</span>
-              <span>Updated: {new Date(task.updatedAt).toLocaleString()}</span>
+              <span>{t('task.created', { date: new Date(task.createdAt).toLocaleString() })}</span>
+              <span>{t('task.updated', { date: new Date(task.updatedAt).toLocaleString() })}</span>
             </div>
           </div>
         </div>

@@ -29,7 +29,7 @@ async function createTaskFromText(text: string) {
     // description: undefined, // Description only for metadata like URL
     status: 'todo' as const,
     priority: 'none' as const,
-    tags: [...new Set(['quick-add', ...extractedTags])], // Merge quick-add with extracted tags
+    tags: [...new Set([...extractedTags])], // Only use extracted tags
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -54,7 +54,7 @@ async function createTaskFromPage(title: string, url: string) {
     description: url, // Store URL in description
     status: 'todo' as const,
     priority: 'none' as const,
-    tags: [...new Set(['website', ...extractedTags])], // Merge website with extracted tags
+    tags: [...new Set([...extractedTags])], // Only use extracted tags
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
