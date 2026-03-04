@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './hooks/useStore';
 import { storage } from './lib/storage';
-import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft, User, Globe, Info, X } from 'lucide-react';
+import { Check, Trash2, Settings, Loader2, Plus, AlertCircle, RefreshCw, ChevronLeft, User, Globe, Info, X, Link2, ExternalLink } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import clsx from 'clsx';
 import { DEFAULT_SERVER_URL } from './config';
@@ -520,7 +520,30 @@ function App() {
                 }}
               />
             </div>
-            
+
+            {/* Link Display */}
+            {task.description && (task.description.startsWith('http') || task.description.startsWith('www.')) && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50/50 border border-indigo-100 rounded-lg">
+                <Link2 size={14} className="text-indigo-400 flex-shrink-0" />
+                <a
+                  href={task.description}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-xs text-indigo-600 hover:text-indigo-700 truncate transition-colors"
+                  title={task.description}
+                >
+                  {task.description}
+                </a>
+                <button
+                  onClick={() => updateTask(task.id, { description: undefined })}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  title="Remove link"
+                >
+                  <X size={12} strokeWidth={2.5} />
+                </button>
+              </div>
+            )}
+
             {/* Tags Management */}
             <div className="pt-2 border-t border-gray-100">
               <div className="flex flex-wrap gap-2">
