@@ -1,5 +1,5 @@
 {
-  "name": "qknot-extension",
+  "name": "utools-clipper",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -12,15 +12,12 @@
   "dependencies": {
     "@crxjs/vite-plugin": "^2.3.0",
     "@tailwindcss/vite": "^4.2.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "sharp": "^0.35.2",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
-    "ulid": "^3.0.2",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

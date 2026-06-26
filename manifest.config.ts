@@ -8,7 +8,7 @@ const [major, minor, patch] = version.replace(/[^\d.-]+/g, '').split(/[.-]/)
 
 export default defineManifest(async (env) => ({
   manifest_version: 3,
-  name: env.mode === 'staging' ? '[INTERNAL] QKnot' : 'QKnot',
+  name: env.mode === 'staging' ? '[INTERNAL] uTools Clipper' : 'uTools Clipper',
   version: `${major}.${minor}.${patch}`,
   version_name: version,
   action: {
@@ -28,7 +28,7 @@ export default defineManifest(async (env) => ({
     service_worker: 'src/background/index.ts',
     type: 'module',
   },
-  permissions: ['storage', 'alarms', 'contextMenus'],
+  permissions: ['storage', 'contextMenus'],
   host_permissions: ['http://*/*', 'https://*/*'],
   content_scripts: [
     {
