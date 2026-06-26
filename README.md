@@ -1,6 +1,6 @@
 # uTools Clipper
 
-一个 Chrome 浏览器扩展，选中任意网页文字即可快速收藏到 **uTools** 的待办或笔记中。
+一个 Chrome 浏览器扩展，选中任意网页文字即可快速收藏到 **uTools** 的**TODO待办**或**Markdown笔记**中。
 
 ## 功能
 
