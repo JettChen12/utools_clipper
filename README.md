@@ -8,7 +8,7 @@
 - **待办 / 笔记双模式** — 一键切换，待办可选分组，笔记支持 AI 自动生成标题
 - **AI 标题生成** — 配置 OpenAI 兼容 API（如 DeepSeek），点击 ✨ AI 按钮自动生成 ≤12 字中文标题
 - **来源链接** — 可选附带当前页面链接（默认勾选，可取消）
-- **右键菜单** — 支持右键直接收藏为待办或笔记
+- **右键菜单** — 右键选中文字直接弹出收藏面板，无需先点浮动按钮
 - **分组管理** — 自动获取 uTools 待办分组，支持分组筛选与手动刷新，5 分钟缓存
 - **MCP JSON 粘贴** — 支持直接粘贴 uTools MCP 配置 JSON，自动解析 URL 和 Key
 - **未配置警告** — MCP 未配置时弹窗内显示红色警告提示
@@ -17,7 +17,6 @@
 
 - [uTools](https://u.tools/) 已安装并运行
 - uTools 已启用 **MCP 服务**（默认端口 `3501`）
-- 在 uTools 设置 → MCP Server 中获取 **MCP Key**
 
 ## 安装
 
@@ -36,12 +35,19 @@
 
 ### uTools MCP（必填）
 
+**获取配置（推荐）**：
+
+1. 打开 uTools 设置 → **AI Agent 链接**
+2. 打开 AI Agent 面板，点击 **连接 AI Agent**
+3. 点击 **MCP 配置详情**
+4. 复制 JSON 内容，粘贴到扩展设置页的输入框中（支持「粘贴 JSON」模式，自动提取 URL 和 Key）
+
+**手动配置**：
+
 | 字段 | 说明 | 示例 |
 |------|------|------|
 | MCP 地址 | uTools MCP 服务地址 | `http://127.0.0.1:3501/mcp` |
-| MCP Key | uTools MCP 密钥 | 从 uTools 设置 → MCP Server 复制 |
-
-> **提示**：支持「粘贴 JSON」模式，直接粘贴 uTools MCP 配置 JSON，自动提取 URL 和 Key。
+| MCP Key | uTools MCP 密钥 | 从 uTools MCP 配置详情中获取 |
 
 ### AI 模型（可选，用于 AI 标题生成）
 
