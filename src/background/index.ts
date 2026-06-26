@@ -149,11 +149,11 @@ async function generateTitle(text: string): Promise<string | null> {
 
     const data = await res.json();
     console.log('[generateTitle] response data:', JSON.stringify(data).slice(0, 500));
-    const title = data.choices?.[0]?.message?.content?.trim()
-      || data.choices?.[0]?.message?.reasoning_content?.trim()
-      || null;
-    console.log('[generateTitle] extracted title:', title);
-    return title;
+    const title = data.choices?.[0]?.message?.content?.trim() || null;
+    // Enforce max 12 chars & single line
+    const cleaned = title ? title.replace(/\n/g, ' ').slice(0, 12) : null;
+    console.log('[generateTitle] extracted title:', cleaned);
+    return cleaned;
   } catch (err) {
     console.error('[generateTitle] fetch error:', err);
     return null;
