@@ -58,29 +58,6 @@
 
 > **注意**：AI 模型不配置不影响核心收藏功能，仅 AI 标题生成不可用。
 
-## 发布
-
-### 版本管理
-
-版本号在 `package.json` 中维护，遵循[语义化版本](https://semver.org/lang/zh-CN/)。升级版本使用以下命令：
-
-```bash
-npm run release:patch   # 1.0.0 → 1.0.1  修复
-npm run release:minor   # 1.0.0 → 1.1.0  新功能
-npm run release:major   # 1.0.0 → 2.0.0  破坏性变更
-```
-
-> 以上命令会自动更新 `package.json` 版本号、创建 git commit 和 tag。
-
-### 发布步骤
-
-1. 更新 `CHANGELOG.md`，在顶部新增版本条目
-2. 提交 changelog：`git add CHANGELOG.md && git commit -m "chore: update changelog"`
-3. 升级版本号：`npm run release:patch`（或 `minor` / `major`）
-4. 推送到远程：`git push --follow-tags`
-5. 在 [GitHub Releases](https://github.com/JettChen12/utools_clipper/releases) 页面基于 tag 创建 Release
-6. 运行 `npm run release:zip` 生成 zip，上传为 Release 附件
-
 ## 技术栈
 
 - **TypeScript** + **Vite** + **@crxjs/vite-plugin** — Chrome Extension Manifest V3
