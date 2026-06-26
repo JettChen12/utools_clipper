@@ -52,6 +52,14 @@ class ClipperPopup {
     document.addEventListener('mousedown', (e) => this.handleOutsideClick(e));
     document.addEventListener('scroll', () => this.hideAll(), { passive: true });
     window.addEventListener('resize', () => this.hideAll(), { passive: true });
+
+    // Listen for right-click context menu commands from background
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === 'SHOW_POPUP') {
+        const { text, clipType } = message.payload;
+        this.handleShowPopup(text, (clipType as ClipType) || 'todo');
+      }
+    });
   }
 
   private buildStyles() {
@@ -661,6 +669,74 @@ class ClipperPopup {
     this.isPopupOpen = true;
 
     // User clicks AI button manually to generate title
+  }
+
+  private async handleShowPopup(text: string, clipType: ClipType) {
+    if (!text) return;
+
+    // Close existing popup if open, then reset state
+    if (this.isPopupOpen) {
+      this.popup.classList.remove('open');
+      this.isPopupOpen = false;
+    }
+
+    this.currentText = text;
+    this.clipType = clipType;
+    this.titleInput = text.slice(0, 12);
+    this.aiTitle = null;
+    this.selectedGroup = '';
+    this.isSaving = false;
+    this.includeLink = true;
+
+    // Load groups (may fail if MCP unavailable)
+    try {
+      await this.loadGroups(false);
+    } catch (err) {
+      console.error('[Clipper] loadGroups failed:', err);
+      this.renderPopup();
+    }
+
+    // Check MCP config status
+    try {
+      const status = await this.sendMessage<{ configured: boolean }>('CHECK_MCP_CONFIG');
+      this.mcpConfigured = status?.configured ?? false;
+      if (!this.mcpConfigured) this.renderPopup();
+    } catch {
+      this.mcpConfigured = false;
+      this.renderPopup();
+    }
+
+    // Position popup: reuse floating button's position (already correctly 
+    // placed near selection by showButton), fallback to viewport center-top
+    const sx = window.scrollX || window.pageXOffset;
+    const sy = window.scrollY || window.pageYOffset;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let px: number;
+    let py: number;
+
+    if (this.isVisible) {
+      // Same logic as handleButtonClick — button is proven correct
+      const btnRect = this.button.getBoundingClientRect();
+      px = btnRect.left + sx;
+      py = btnRect.bottom + sy + 8;
+      if (px + 340 > sx + vw) px = sx + vw - 350;
+      if (py + 350 > sy + vh) py = btnRect.top + sy - 360;
+      if (px < sx) px = sx + 8;
+    } else {
+      px = sx + vw / 2 - 170;
+      py = sy + 100;
+      if (px + 340 > sx + vw) px = sx + vw - 350;
+      if (py + 350 > sy + vh) py = sy + Math.max(vh - 360, 40);
+      if (px < sx) px = sx + 8;
+    }
+
+    // Hide floating button, show popup
+    this.hideButton();
+    this.popup.style.left = `${px}px`;
+    this.popup.style.top = `${py}px`;
+    this.popup.classList.add('open');
+    this.isPopupOpen = true;
   }
 
   private handleOutsideClick(e: MouseEvent) {

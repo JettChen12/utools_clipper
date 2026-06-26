@@ -240,30 +240,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
-      id: 'clip-as-todo',
-      title: '收藏到 uTools 待办',
-      contexts: ['selection'],
-    });
-    chrome.contextMenus.create({
-      id: 'clip-as-note',
-      title: '收藏到 uTools 笔记',
+      id: 'clip',
+      title: '收藏到 uTools',
       contexts: ['selection'],
     });
   });
 });
 
-chrome.contextMenus.onClicked.addListener(async (info) => {
+chrome.contextMenus.onClicked.addListener((info, tab) => {
   const text = info.selectionText?.trim();
-  if (!text) return;
-  if (info.menuItemId === 'clip-as-todo') {
-    await mcpCall('utools.todo.todo_create', { content: text });
-  } else if (info.menuItemId === 'clip-as-note') {
-    const lines = text.split('\n');
-    await mcpCall('utools.notes.markdown_notes_create', {
-      title: lines[0].slice(0, 50),
-      content: text,
-    });
-  }
+  if (!text || !tab?.id) return;
+
+  chrome.tabs.sendMessage(tab.id, {
+    type: 'SHOW_POPUP',
+    payload: { text },
+  }).catch(() => {
+    // Content script not available on this page (e.g. chrome://, edge://)
+    console.warn('[Clipper] Cannot show popup on this page');
+  });
 });
 
 console.log('uTools Clipper SW ready');
